@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triggered Direct Mail System Architecture</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 40px 20px;
+            color: #1a202c;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: #1a202c;
+        }
+        
+        .header p {
+            color: #6b7280;
+            font-size: 15px;
+        }
+        
+        .view-controls {
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .view-btn {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .view-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+        
+        .view-btn.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        
+        .stage-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: fadeIn 0.6s forwards;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .stage-row.two-col {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .stage-row.single-col {
+            grid-template-columns: 1fr;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .stage {
+            background: #f0f4f8;
+            border: 2px solid #2d3748;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stage:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+        
+        .stage.decision {
+            background: #fff5e6;
+            border-color: #d97706;
+        }
+        
+        .stage.critical {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+        }
+        
+        .stage.recommendation {
+            background: #dbeafe;
+            border: 2px solid #1e40af;
+        }
+        
+        .stage-header {
+            cursor: pointer;
+        }
+        
+        .stage-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6b7280;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .stage-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #1a202c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toggle-icon {
+            font-size: 18px;
+            transition: transform 0.3s;
+            color: #6b7280;
+        }
+        
+        .stage.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .stage.decision .stage-title {
+            color: #92400e;
+        }
+        
+        .stage.recommendation .stage-title {
+            color: #1e3a8a;
+        }
+        
+        .stage-content {
+            font-size: 13px;
+            color: #4a5568;
+            line-height: 1.6;
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s ease;
+        }
+        
+        .stage.collapsed .stage-content {
+            max-height: 0;
+            opacity: 0;
+        }
+        
+        .stage-content ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .stage-content li {
+            margin-bottom: 6px;
+            padding-left: 12px;
+            position: relative;
+        }
+        
+        .stage-content li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #6366f1;
+            font-weight: bold;
+        }
+        
+        .vendor-options {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #cbd5e0;
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.3s ease;
+        }
+        
+        .stage.collapsed .vendor-options {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            margin-top: 0;
+        }
+        
+        .vendor-option {
+            background: #e6f3ff;
+            border: 1.5px dashed #2563eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-style: italic;
+            color: #2563eb;
+            transition: all 0.2s;
+        }
+        
+        .vendor-option:hover {
+            background: #dbeafe;
+            border-color: #1e40af;
+        }
+        
+        .vendor-option:last-child {
+            margin-bottom: 0;
+        }
+        
+        .flow-indicator {
+            text-align: center;
+            margin: 20px 0;
+            color: #6b7280;
+            font-size: 32px;
+        }
+        
+        .flow-indicator.critical {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
+        .flow-label {
+            font-size: 11px;
+            color: #dc2626;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .inputs-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .input-box {
+            background: #fff5e6;
+            border: 2px solid #d97706;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .input-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(217, 119, 6, 0.15);
+        }
+        
+        .input-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #92400e;
+        }
+        
+        .input-content {
+            font-size: 12px;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+        
+        .input-content ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 8px;
+        }
+        
+        .input-content li {
+            margin-bottom: 4px;
+            padding-left: 12px;
+            position: relative;
+        }
+        
+        .input-content li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #d97706;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            padding-top: 30px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .expand-collapse-all {
+            font-size: 12px;
+            color: #6366f1;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .expand-collapse-all:hover {
+            color: #4f46e5;
+        }
+        
+        @media (max-width: 1024px) {
+            .stage-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .inputs-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+            .view-controls {
+                display: none;
+            }
+            .stage {
+                page-break-inside: avoid;
+            }
+            .flow-indicator {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Triggered Direct Mail System Architecture - DRAFT</h1>
+            <p>End-to-End Data Flow & Orchestration Model</p>
+        </div>
+
+        <div class="view-controls">
+            <span style="color: #6b7280; font-size: 13px; margin-right: 10px;">Quick Actions:</span>
+            <button class="view-btn" onclick="expandAll()">Expand All</button>
+            <button class="view-btn" onclick="collapseAll()">Collapse All</button>
+        </div>
+
+        <!-- STAGE 1-3 ROW -->
+        <div class="stage-row" style="animation-delay: 0.1s;">
+            <!-- STAGE 1 -->
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 1: Audience Formation</div>
+                    <div class="stage-title">
+                        <span>Client Website Tagging</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Pixel deployed (GTM or Shopify.liquid)</li>
+                        <li>Page views, cart events, abandons tracked</li>
+                        <li>UUID → postal address resolution</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">MindFire pixel + ID resolution</div>
+                    <div class="vendor-option">OR Spectrum + IDR</div>
+                </div>
+            </div>
+
+            <!-- STAGE 2 -->
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 2: Staging & Hygiene</div>
+                    <div class="stage-title">
+                        <span>Real-Time List Staging</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Daily audience builds accumulate</li>
+                        <li>CASS/NCOA hygiene applied</li>
+                        <li>Ready for program logic processing</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">Mindfire platform or Advertisers Printing data team</div>
+                    <div class="vendor-option">OR Spectrum</div>
+                </div>
+            </div>
+
+            <!-- STAGE 3 -->
+            <div class="stage decision" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 3: Orchestration Engine</div>
+                    <div class="stage-title">
+                        <span>Program Rules & Suppressions</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <p style="font-weight: bold; margin-bottom: 10px;">WHO OWNS THIS LOGIC AND FLOW?</p>
+                    <ul>
+                        <li>Segment customers & prospects</li>
+                        <li>Suppress recent C1 mailings (cross-program)</li>
+                        <li>Daily budget caps & pacing rules</li>
+                        <li>Additional Audience optimization (optional)</li>
+                        <li>Creative assignment logic (if multi-variant)</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">MindFire platform or Service Bureau (eg Spectrum/CT)?</div>
+                    <div class="vendor-option">Integrate with Co-op (eg WILAND) for automation</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flow-indicator">↓</div>
+
+        <!-- STAGE 4-5-6 ROW -->
+        <div class="stage-row" style="animation-delay: 0.2s;">
+            <!-- STAGE 4 -->
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 4: Production Preparation</div>
+                    <div class="stage-title">
+                        <span>Print-Ready File Assembly</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Merge/purge final list</li>
+                        <li>Variable data merge with creative</li>
+                        <li>Automated folder drop for production</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">Advertisers Printing</div>
+                </div>
+            </div>
+
+            <!-- STAGE 5 -->
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 5: Fulfillment</div>
+                    <div class="stage-title">
+                        <span>Print, Finish & Mail Induction</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Digital press production (6x9 postcards)</li>
+                        <li>BCC Mail Manager for postal sortation</li>
+                        <li>First-class mail induction (1-3 day turnaround)</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">Advertisers Printing</div>
+                </div>
+            </div>
+
+            <!-- STAGE 6 -->
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 6: Tracking & Attribution</div>
+                    <div class="stage-title">
+                        <span>Mailing List Retention & Matching</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Retain mailed lists with unique mail IDs</li>
+                        <li>Track delivery events (USPS IMb scanning)</li>
+                        <li>Receive conversion data (OMS/CRM integration)</li>
+                        <li>Match conversions to mailed universe</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">MindFire platform</div>
+                    <div class="vendor-option">Spectrum builds custom tracking + Tableau reporting</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flow-indicator">↓</div>
+
+        <!-- STAGE 7 ROW -->
+        <div class="stage-row single-col" style="animation-delay: 0.3s;">
+            <div class="stage" onclick="toggleStage(this)">
+                <div class="stage-header">
+                    <div class="stage-label">Stage 7: Insights & Action</div>
+                    <div class="stage-title">
+                        <span>Client Dashboard & Insights</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                </div>
+                <div class="stage-content">
+                    <ul>
+                        <li>Mail volume & spend tracking</li>
+                        <li>Attributed revenue (ROAS)</li>
+                        <li>Segment performance analysis</li>
+                        <li>Optimization recommendations</li>
+                    </ul>
+                </div>
+                <div class="vendor-options">
+                    <div class="vendor-option">White-labeled by MindFire or Spectrum — C1 owns client relationship layer</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IMPORTANT DATA INPUTS -->
+        <div class="flow-indicator critical">
+            <div class="flow-label">Important Data Inputs</div>
+        </div>
+
+        <div class="inputs-section">
+            <div class="input-box">
+                <div class="input-title">Client Suppression Files</div>
+                <div class="input-content">
+                    <ul>
+                        <li>Existing customer lists</li>
+                        <li>Do-not-mail segments</li>
+                    </ul>
+                    <p style="margin-top: 10px; font-style: italic;">→ Feeds into Stage 3 orchestration</p>
+                </div>
+            </div>
+
+            <div class="input-box">
+                <div class="input-title">C1 Cross-Program Data</div>
+                <div class="input-content">
+                    <ul>
+                        <li>Recently mailed (any C1 program)</li>
+                        <li>Frequency caps across campaigns</li>
+                    </ul>
+                    <p style="margin-top: 10px; font-style: italic;">→ Feeds into Stage 3 orchestration</p>
+                </div>
+            </div>
+
+            <div class="input-box">
+                <div class="input-title">Conversion Data Sources</div>
+                <div class="input-content">
+                    <ul>
+                        <li>Client OMS API integrations</li>
+                        <li>Batch file uploads from client</li>
+                    </ul>
+                    <p style="margin-top: 10px; font-style: italic;">→ Feeds into Stage 6 attribution</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Draft v1.0 | For internal C1 discussion | Jude Hoffner Consulting | January 2026
+        </div>
+    </div>
+
+    <script>
+        function toggleStage(element) {
+            element.classList.toggle('collapsed');
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.stage').forEach(stage => {
+                stage.classList.remove('collapsed');
+            });
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('.stage').forEach(stage => {
+                stage.classList.add('collapsed');
+            });
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'e' && e.ctrlKey) {
+                e.preventDefault();
+                expandAll();
+            }
+            if (e.key === 'c' && e.ctrlKey) {
+                e.preventDefault();
+                collapseAll();
+            }
+        });
+
+        // Collapse all stages on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            collapseAll();
+        });
+    </script>
+</body>
+</html>
